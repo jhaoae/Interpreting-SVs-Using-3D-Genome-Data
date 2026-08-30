@@ -75,13 +75,3 @@ python3 permutation.py \
 The first input is the significant-change table from the previous step. The no-SV BED
 contains `chrom`, `start`, and `end`, without a header. Setting `--seed` makes the
 background sampling reproducible.
-
-## Scope and limitations
-
-- The high-contact script reports contacts above a user-selected percentile; it does not
-  implement an unaffected-locus null model.
-- Background windows in `permutation.py` are matched by chromosome and window length,
-  but not by GC content, mappability, or other genomic covariates.
-- The scripts do not apply multiple-testing correction. Threshold sensitivity and
-  additional context-matched null models should be evaluated before making inferential
-  claims.
