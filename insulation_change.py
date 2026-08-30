@@ -1,14 +1,15 @@
 import pandas as pd
-import numpy as np
-import random
 from scipy.stats import wilcoxon
 import argparse
 
 parser = argparse.ArgumentParser(description='Load and merge tumor and control datasets.')
 parser.add_argument('tumor', type=str, help='Path to the poreC tumor data insulation score (e.g., HCC1937_score.bedgraph)')
 parser.add_argument('normal', type=str, help='Path to the poreC control data insulation score (e.g., HCC1937_BL_score.bedgraph)')
-parser.add_argument('sv', type=str, help='Path to the SV Bed file ()')
-parser.add_argument('sv', type=str, help='Path to the SV BED file (6 columns: chr, start, end, sv_type, sv_start, sv_end. The first three columns describe a ±50 kb genomic window around the SV breakpoints, and the last three columns describe the SV itself.)')
+parser.add_argument('sv_file', type=str, help='Path to the SV BED file (6 columns: chr, start, end, sv_type, sv_start, sv_end. The first three columns describe a window around the SV breakpoints, and the last three columns describe the SV itself.)')
+parser.add_argument('--out-prefix', default='SV_insulation', help='Output prefix (default: SV_insulation)')
+parser.add_argument('--quantile', type=float, default=0.05, help='Insulation-score quantile used to calculate the change (default: 0.05)')
+
+args = parser.parse_args()
 
 # load insulation profiles
 tumor_ins = pd.read_csv(
@@ -56,14 +57,9 @@ for _, row in sv.iterrows():
     if len(sub_win) == 0:
         continue
 
-    win_score_tumor = sub_win.score_tumor
-    win_score_bl = sub_win.score_bl
-
-    q = 0.05
-
     delta_win =  (
-        sub_win.score_tumor.quantile(q) -
-        sub_win.score_bl.quantile(q)
+        sub_win.score_tumor.quantile(args.quantile) -
+        sub_win.score_bl.quantile(args.quantile)
     )
 
     results.append({
@@ -82,7 +78,7 @@ for _, row in sv.iterrows():
 result_df = pd.DataFrame(results)
 
 result_df.to_csv(
-    "SV_insulation_change_detail_score.tsv",
+    f"{args.out_prefix}_change_detail_score.tsv",
     sep="\t",
     index=False
 )
@@ -108,7 +104,11 @@ for r in results:
         "n_bins": r["n_bins"]
     })
 
-stat_df = pd.DataFrame(stats)
+stat_columns = [
+    "sv_id", "chr", "start", "end", "sv_type", "delta",
+    "abs_delta", "pvalue", "n_bins"
+]
+stat_df = pd.DataFrame(stats, columns=stat_columns)
 
 sig_df = (
     stat_df
@@ -116,6 +116,5 @@ sig_df = (
     .sort_values("abs_delta", ascending=False)
 )
 
-stat_df.to_csv("SV_insulation_change.tsv", sep="\t", index=False)
-sig_df.to_csv("SV_insulation_significant_change.tsv",sep="\t",index=False)
-
+stat_df.to_csv(f"{args.out_prefix}_change.tsv", sep="\t", index=False)
+sig_df.to_csv(f"{args.out_prefix}_significant_change.tsv",sep="\t",index=False)

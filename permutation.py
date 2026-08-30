@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 import random
-from scipy.stats import wilcoxon
 import argparse
 
 parser = argparse.ArgumentParser(description='Load and process genomic data.')
@@ -9,8 +8,15 @@ parser.add_argument('sv_file', type=str, help='Path to the SV insulation signifi
 parser.add_argument('nosv_file', type=str, help='Path to the no SV region file (3 columns: chr, start, end)')
 parser.add_argument('tumor_file', type=str, help='Path to the poreC tumor data insulation score')
 parser.add_argument('bl_file', type=str, help='Path to the poreC control data insulation score')
+parser.add_argument('--out', default='SV_insulation_permutation_test.tsv', help='Output TSV path')
+parser.add_argument('--n-bg', type=int, default=500, help='Number of background windows per SV (default: 500)')
+parser.add_argument('--seed', type=int, default=None, help='Random seed for reproducible sampling')
 
 args = parser.parse_args()
+
+if args.seed is not None:
+    random.seed(args.seed)
+    np.random.seed(args.seed)
 
 sv_df = pd.read_csv(
     args.sv_file,
@@ -42,7 +48,7 @@ bins = tumor_ins.merge(
 )
 
 BIN_SIZE = 10000
-N_BG = 500   # number of background windows per SV
+N_BG = args.n_bg
 
 
 def bins_in_window(bins_df, chrom, start, end):
@@ -165,11 +171,10 @@ for _, sv in sv_df.iterrows():
 res_df = pd.DataFrame(results)
 
 res_df.to_csv(
-    "SV_insulation_permutation_test.tsv",
+    args.out,
     sep="\t",
     index=False
 )
 
 print("Finished background testing.")
 print(res_df.head())
-
